@@ -1,6 +1,7 @@
 ﻿using Terraria;
 using Terraria.ID;
-using TShockAPI;
+using Terraria.Localization;
+using Microsoft.Xna.Framework;
 
 namespace CustomEvent.ExampleEvent
 {
@@ -9,16 +10,21 @@ namespace CustomEvent.ExampleEvent
         public string Name => "The Rumbling";
         //To you, 2000 years from now...
         public int EventID => 2000;
-        public List<int> EnemyPool => new List<int>() { NPCID.DD2OgreT3 };
-
-        public void ConfigureEvent(int eventId, ref bool handled)
+        public KeyValuePair<LocalizedText, Color> WestIncomingMsg 
+            => new KeyValuePair<LocalizedText, Color>(new LocalizedText("The Titan has already reached the western sea!", "Rumbling.West"), new Color(255, 85, 0));
+        public KeyValuePair<LocalizedText, Color> EastIncomingMsg
+            => new KeyValuePair<LocalizedText, Color>(new LocalizedText("The Titan has already reached the eastern sea!", "Rumbling.East"), new Color(255, 85, 0));
+        public KeyValuePair<LocalizedText, Color> ArrivedMsg 
+            => new KeyValuePair<LocalizedText, Color>(new LocalizedText("The Titan has reached the base!", "Rumbling.Center"), new Color(183, 55, 27));
+        public KeyValuePair<LocalizedText, Color> DefeatedMsg 
+            => new KeyValuePair<LocalizedText, Color>(new LocalizedText("The Rumbling has stopped!", "Rumbling.Stopped"), new Color(135, 138, 143));
+        public Dictionary<int, int> EnemyPool => new Dictionary<int, int>
         {
-            if (eventId != EventID)
-            {
-                handled = true;
-                return;
-            }
+            { NPCID.DD2OgreT3, 3 }
+        };
 
+        public void ConfigureEvent(int eventId)
+        {
             int num = 0;
             for (int i = 0; i < Main.maxPlayers; i++)
             {
@@ -31,34 +37,29 @@ namespace CustomEvent.ExampleEvent
             {
                 Core.eventType = eventId;
                 Core.eventSize = 10 + 5 * num;
+                Core.eventWarn = 0;
             }
-            Core.eventX = (double)(Main.spawnTileX - 1);
-            handled = false;
+            Core.eventX = (double)Main.maxTilesX;
         }
 
-        public void CheckRequirementsForDaytimeEvent(ref bool handled)
+        public bool CheckRequirementsForDaytimeEvent()
         {
             if (Main.hardMode)
             {
                 Main.StartInvasion(EventID);
-                TSPlayer.All.SendMessage($"{Name} has started... Could this mark the end of humanity?", 255, 85, 0);
-                handled = true;
+                return true;
             }
-            else
-            {
-                handled = false;
-            }
+            return false;
         }
 
-        public void CheckRequirementsForNighttimeEvent(ref bool handled) { }
+        public bool CheckRequirementsForNighttimeEvent() => false;
 
-        public void SpawnEventNPC(Player player, int tileX, int tileY, ref bool handled)
+        public bool SpawnEventNPC(Player player, int tileX, int tileY)
         {
-            if (NPC.CountNPCS(NPCID.DD2OgreT3) < Core.eventSize)
-            {
-                NPC.NewNPC(NPC.GetSpawnSourceForNaturalSpawn(), tileX * 16 + 8, tileY * 16, NPCID.DD2OgreT3);
-            }
-            handled = true;
+            NPC.NewNPC(NPC.GetSpawnSourceForNaturalSpawn(), tileX * 16 + 8, tileY * 16, NPCID.DD2OgreT3);
+            return NPC.CountNPCS(NPCID.DD2OgreT3) < Core.eventSize;
         }
+
+        public void OnEventCompletion() { }
     }
 }

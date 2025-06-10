@@ -26,13 +26,8 @@ namespace CustomEvent
         /// <param name="args">Data for the <see cref=ExHooks.Events.Invasion.EventFlagCheckEventArgs"/>.</param>
         internal static void MyHook_OnEventFlagCheck(object? sender, ExHooks.Events.Invasion.EventFlagCheckEventArgs args)
         {
-            if (args.Player == null)
-            {
-                return;
-            }
-
             //Checks if there is any vanilla or custom event going on including npc in that event can still be spawned and the player's Y position must not be deeper than 67.5 tiles below the surface.
-            if (args.Player.active && (Main.invasionType > 0 || Core.eventType > 0) && (Main.invasionDelay == 0 || Core.eventDelay == 0) && 
+            if (args.Player!.active && (Main.invasionType > 0 || Core.eventType > 0) && Main.invasionDelay == 0 && 
                 (Main.invasionSize > 0 || Core.eventSize > 0) && (double)args.Player.position.Y < Main.worldSurface * 16.0 + (double)NPC.sHeight || Main.remixWorld)
             {
                 int invasionRange = 3000;
@@ -70,6 +65,7 @@ namespace CustomEvent
                     }
                 }
             }
+            args.Handled = true;
         }
 
         /// <summary>
@@ -82,12 +78,78 @@ namespace CustomEvent
         {
             foreach (var evins in Core.eventInstances!)
             {
-                var evId = (int)evins!.GetType().GetProperty("EventID")!.GetValue(evins)!;
-                if (evId == args.EventID)
+                if (evins.EventID == args.EventID)
                 {
-                    var parameters = new object[] { args.EventID, args.Handled };
-                    evins!.GetType().GetMethod("ConfigureEvent")!.Invoke(evins, parameters);
-                    args.Handled = (bool)parameters[1];
+                    evins.ConfigureEvent(args.EventID);
+                    args.Handled = true;
+                    break;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Called each time there's an announcement message that's not from vanilla.
+        /// Adds additional code for handling custom event.
+        /// </summary>
+        /// <param name="sender">The object that triggered the event.</param>
+        /// <param name="args">Data for the <see cref=ExHooks.Events.Invasion.ModdedEventAnnouncementEventArgs"/></param>
+        internal static void MyHook_OnModdedEventAnnouncement(object? sender, ExHooks.Events.Invasion.ModdedEventAnnouncementEventArgs args)
+        {
+            //There's no need to check whether the announcement message is empty or not since the hook has already done it for us.
+            if (Core.eventSize <= 0) //The event has been defeated.
+            {
+                foreach (var evins in Core.eventInstances!)
+                {
+                    if (evins.EventID == Core.eventType)
+                    {
+                        args.AnnouncementMsg = evins.DefeatedMsg.Key;
+                        args.MsgR = evins.DefeatedMsg.Value.R;
+                        args.MsgG = evins.DefeatedMsg.Value.G;
+                        args.MsgB = evins.DefeatedMsg.Value.B;
+                        break;
+                    }
+                }
+            }
+            else if (Core.eventX < (double)Main.spawnTileX) //The event is approaching from the west
+            {
+                foreach (var evins in Core.eventInstances!)
+                {
+                    if (evins.EventID == Core.eventType)
+                    {
+                        args.AnnouncementMsg = evins.WestIncomingMsg.Key;
+                        args.MsgR = evins.WestIncomingMsg.Value.R;
+                        args.MsgG = evins.WestIncomingMsg.Value.G;
+                        args.MsgB = evins.WestIncomingMsg.Value.B;
+                        break;
+                    }
+                }
+            }
+            else if (Core.eventX > (double)Main.spawnTileX) //The event is approaching from the east.
+            {
+                foreach (var evins in Core.eventInstances!)
+                {
+                    if (evins.EventID == Core.eventType)
+                    {
+                        args.AnnouncementMsg = evins.EastIncomingMsg.Key;
+                        args.MsgR = evins.EastIncomingMsg.Value.R;
+                        args.MsgG = evins.EastIncomingMsg.Value.G;
+                        args.MsgB = evins.EastIncomingMsg.Value.B;
+                        break;
+                    }
+                }
+            }
+            else //The event has arrived!
+            {
+                foreach (var evins in Core.eventInstances!)
+                {
+                    if (evins.EventID == Core.eventType)
+                    {
+                        args.AnnouncementMsg = evins.ArrivedMsg.Key;
+                        args.MsgR = evins.ArrivedMsg.Value.R;
+                        args.MsgG = evins.ArrivedMsg.Value.G;
+                        args.MsgB = evins.ArrivedMsg.Value.B;
+                        break;
+                    }
                 }
             }
         }
@@ -104,12 +166,100 @@ namespace CustomEvent
             {
                 foreach (var evins in Core.eventInstances!)
                 {
-                    var evId = (int)evins!.GetType().GetProperty("EventID")!.GetValue(evins)!;
-                    if (evId == Core.eventType && args.Player != null)
+                    if (evins.EventID == Core.eventType && args.Player!.active)
                     {
-                        var parameters = new object[] { args.Player, args.TileX, args.TileY, args.Handled };
-                        evins.GetType().GetMethod("SpawnEventNPC")!.Invoke(evins, parameters);
-                        args.Handled = (bool)parameters[3];
+                        args.Handled = evins.SpawnEventNPC(args.Player, args.TileX, args.TileY);
+                        break;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Called each time an npc is killed (after <see cref="OTAPI.Hooks.NPC.Killed"/>).
+        /// Reduces the on-going custom event size if the npc belongs to that event.
+        /// </summary>
+        /// <param name="obj">The object that triggered the event.</param>
+        /// <param name="args">Data for the <see cref=ExHooks.Events.Invasion.PostEventNpcKilledEventArgs"/></param>
+        internal static void MyHook_OnPostEventNPCKilled(object? obj, ExHooks.Events.Invasion.PostEventNpcKilledEventArgs args)
+        {
+            //Since events created this way may share duplicate enemies between custom events so we are gonna rely on the currently active event.
+            foreach (var evins in Core.eventInstances!)
+            {
+                if (evins.EventID == Core.eventType)
+                {
+                    if (evins.EnemyPool.ContainsKey(args.NPC!.type))
+                    {
+                        var enemySize = evins.EnemyPool[args.NPC.type];
+                        if (enemySize > 0)
+                        {
+                            Core.eventSize -= enemySize;
+                            if (Core.eventSize < 0)
+                            {
+                                Core.eventSize = 0;
+                            }
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+
+        internal static void MyHook_OnModdedEventUpdate(object? sender, ExHooks.Events.Invasion.ModdedEventUpdateEventArgs args)
+        {
+            if (Core.eventType > 0)
+            {
+                if (Core.eventSize <= 0)
+                {
+                    foreach (var evins in Core.eventInstances!)
+                    {
+                        if (evins.EventID == Core.eventType)
+                        {
+                            evins.OnEventCompletion();
+                            break;
+                        }
+                    }
+                    Main.InvasionWarning();
+                    Core.eventType = 0;
+                    Main.invasionDelay = 0;
+                }
+                if (Core.eventX != (double)Main.spawnTileX)
+                {
+                    float evSpeed = (float)Main.dayRate;
+                    if (evSpeed < 1f)
+                    {
+                        evSpeed = 1f;
+                    } 
+                    if (Core.eventX > (double)Main.spawnTileX)
+                    {
+                        Core.eventX -= (double)evSpeed;
+                        if (Core.eventX <= (double)Main.spawnTileX)
+                        {
+                            Core.eventX = (double)Main.spawnTileX;
+                            Main.InvasionWarning();
+                        }
+                        else if (evSpeed > 0f)
+                        {
+                            Core.eventWarn--;
+                        }
+                    }
+                    else if (Core.eventX < (double)Main.spawnTileX)
+                    {
+                        Core.eventX += evSpeed;
+                        if (Core.eventX >= (double)Main.spawnTileX)
+                        {
+                            Core.eventX = (double)Main.spawnTileX;
+                            Main.InvasionWarning();
+                        }
+                        else if (evSpeed > 0f)
+                        {
+                            Core.eventWarn--;
+                        }
+                    }
+                    if (Core.eventWarn <= 0)
+                    {
+                        Core.eventWarn = 3600;
+                        Main.InvasionWarning();
                     }
                 }
             }
@@ -125,9 +275,7 @@ namespace CustomEvent
         {
             foreach (var evins in Core.eventInstances!)
             {
-                var parameters = new object[] { args.Handled };
-                evins!.GetType().GetMethod("CheckRequirementsForDaytimeEvent")!.Invoke(evins, parameters);
-                args.Handled = (bool)parameters[0];
+                args.Handled = evins.CheckRequirementsForDaytimeEvent();
             }
         }
 
@@ -141,9 +289,7 @@ namespace CustomEvent
         {
             foreach (var evins in Core.eventInstances!)
             {
-                var parameters = new object[] { args.Handled };
-                evins!.GetType().GetMethod("CheckRequirementsForNighttimeEvent")!.Invoke(evins, parameters);
-                args.Handled = (bool)parameters[0];
+                args.Handled = evins.CheckRequirementsForNighttimeEvent();
             }
         }
     }
