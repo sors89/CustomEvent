@@ -24,7 +24,7 @@ I’ve got other things going on in real life, so I can only work on it when I h
 - Better API.
 # ちなみに
 - This plugin **requires** [ExHooks](https://github.com/sors89/ExHooks), another plugin library that provides extra hooks which might be useful for your TShock modding.
-- This plugin is designed to offer a way to create custom event, it does **not** to provide any built-in events.
+- This plugin is designed to offer a way to create custom event, **not** to provide any built-in events.
 - You can use TShock's build-in `/worldevent` command as an alternative way to start a custom event. 
 - This is my first time creating a library for others to use so there may be some imperfections. Any suggestions are greatly appreciated!
 - The `ExampleEvent` folder contains a sample custom event, feel free to check it out, it's pretty cool, seriously.

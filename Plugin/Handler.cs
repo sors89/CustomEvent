@@ -53,8 +53,10 @@ namespace CustomEvent
                     }
                 }
                 //Modded event handling, pretty much the same as the vanilla one.
-                //We handle this seperately because there's a bug in last version when you try to spawn a vanilla evet immediately after a custom event has ended,
-                //The vanilla event will spawn its enemies immediately without giving players time to prepare.
+                /*
+                 We handle this seperately because there's a bug in last version when you try to spawn a vanilla event immediately after a custom event has ended,
+                 the vanilla event will spawn its enemies immediately without giving players time to prepare.
+                */
                 else if (Core.eventType > 0 && Core.eventSize > 0)
                 {
                     if ((double)args.Player.position.X > Core.eventX * 16.0 - (double)invasionRange &&
@@ -101,7 +103,7 @@ namespace CustomEvent
         {
             foreach (var evins in Core.eventInstances!)
             {
-                if (evins!.EventID == args.EventID)
+                if (evins.EventID == args.EventID)
                 {
                     evins.ConfigureEvent(args.EventID);
                     //Only if the value of InfiniteInvasion in config.json is true.
