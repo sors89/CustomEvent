@@ -12,7 +12,7 @@ Like many other TShock plugins, simply place `CustomEvent.dll` alongside `ExHook
   - Using a modified version of OTAPI or TShock.
 	- You're **fully responsible** for maintaining and fixing any issues in the plugin yourself.
   - Incompatibility with other plugins.
-  - The plugin hasn't been updated to the **lastest stable** release of OTAPI or TShock.
+  - The plugin hasn't been updated to the **latest stable** release of OTAPI or TShock.
 # How does this works?
 By using IL editing technique to hook into Terraria's event code, we can manipulate it to execute our custom event as well! </br>
 # State of development
