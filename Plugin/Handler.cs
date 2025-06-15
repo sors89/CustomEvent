@@ -26,27 +26,49 @@ namespace CustomEvent
         /// <param name="args">Data for the <see cref=ExHooks.Events.Invasion.EventFlagCheckEventArgs"/>.</param>
         internal static void MyHook_OnEventFlagCheck(object? sender, ExHooks.Events.Invasion.EventFlagCheckEventArgs args)
         {
-            //Checks if there is any vanilla or custom event going on including npc in that event can still be spawned and the player's Y position must not be deeper than 67.5 tiles below the surface.
-            if (args.Player!.active && (Main.invasionType > 0 || Core.eventType > 0) && Main.invasionDelay == 0 && 
-                (Main.invasionSize > 0 || Core.eventSize > 0) && (double)args.Player.position.Y < Main.worldSurface * 16.0 + (double)NPC.sHeight || Main.remixWorld)
+            //For checking whether the player is near town npcs or not.
+            bool checkNearbyTownNpcs = false;
+            //Player is active, there's no delay for event and player's Y position must not be deeper than 67.5 tiles below the surface.
+            if ((args.Player!.active && Main.invasionDelay == 0 &&
+                (double)args.Player.position.Y < Main.worldSurface * 16 + (double)NPC.sHeight) || Main.remixWorld)
             {
                 int invasionRange = 3000;
-
-                //Checks if the player is in the idea invasion range for spawning invasion npc.
-                //Note that events like the Goblin invasion uses invasionX to approach to the ~center of the world,
-                //but if the player happens to be in their way of approaching, the invasion npc will still be spawned.
-                if (((double)args.Player.position.X > Main.invasionX * 16.0 - (double)invasionRange &&
-                    (double)args.Player.position.X < Main.invasionX * 16.0 + (double)invasionRange) ||
-                    ((double)args.Player.position.X > Core.eventX * 16.0 - (double)invasionRange &&
-                    (double)args.Player.position.X < Core.eventX * 16.0 + (double)invasionRange))
+                //Vanilla event handling.
+                if (Main.invasionType > 0 && Main.invasionSize > 0)
                 {
-                    //Enables event flag, tell Terraria that there does have an event going on.
-                    //By doing this, Terraria will run into the piece of code that only spawns event npc.
-                    args.AnyOngoingEvent = true;
+                    //Checks if the player is in the idea invasion range for spawning invasion npc.
+                    //Note that events like the Goblin invasion uses invasionX to approach to the ~center of the world,
+                    //but if the player happens to be in their way of approaching, the invasion npc will still be spawned.
+                    if ((double)args.Player.position.X > Main.invasionX * 16.0 - (double)invasionRange &&
+                    (double)args.Player.position.X < Main.invasionX * 16.0 + (double)invasionRange)
+                    {
+                        //Enables event flag, tell Terraria that there does have an event going on.
+                        //By doing this, Terraria will run into the piece of code that only spawns event npc.
+                        args.AnyOngoingEvent = true;
+                    }
+                    //If the invasion arrives near the horizontal world center, invasion npc can also be spawned by player being near of any town npc.
+                    else if (Main.invasionX >= (double)(Main.maxTilesX / 2 - 5) && Main.invasionX <= (double)(Main.maxTilesX / 2 + 5))
+                    {
+                        checkNearbyTownNpcs = true;
+                    }
                 }
-                //If the invasion arrives near the horizontal world center, invasion npc can also be spawned by player being near of any town npc
-                else if (Main.invasionX >= (double)(Main.maxTilesX / 2 - 5) && Main.invasionX <= (double)(Main.maxTilesX / 2 + 5) ||
-                        (Core.eventX >= (double)(Main.maxTilesX / 2 - 5) && Core.eventX <= (double)(Main.maxTilesX / 2 + 5)))
+                //Modded event handling, pretty much the same as the vanilla one.
+                //We handle this seperately because there's a bug in last version when you try to spawn a vanilla evet immediately after a custom event has ended,
+                //The vanilla event will spawn its enemies immediately without giving players time to prepare.
+                else if (Core.eventType > 0 && Core.eventSize > 0)
+                {
+                    if ((double)args.Player.position.X > Core.eventX * 16.0 - (double)invasionRange &&
+                    (double)args.Player.position.X < Core.eventX * 16.0 + (double)invasionRange)
+                    {
+                        args.AnyOngoingEvent = true;
+                    }
+                    else if (Core.eventX >= (double)(Main.maxTilesX / 2 - 5) && Core.eventX <= (double)(Main.maxTilesX / 2 + 5))
+                    {
+                        checkNearbyTownNpcs = true;
+                    }
+                }
+
+                if (checkNearbyTownNpcs)
                 {
                     foreach (var npc in Main.npc)
                     {
@@ -65,6 +87,7 @@ namespace CustomEvent
                     }
                 }
             }
+            //Disables vanilla event handling because we modified it to also include a handler for custom event.
             args.Handled = true;
         }
 
@@ -78,9 +101,16 @@ namespace CustomEvent
         {
             foreach (var evins in Core.eventInstances!)
             {
-                if (evins.EventID == args.EventID)
+                if (evins!.EventID == args.EventID)
                 {
                     evins.ConfigureEvent(args.EventID);
+                    //Only if the value of InfiniteInvasion in config.json is true.
+                    //This would make the invasion last indefinitely.
+                    if (TShockAPI.TShock.Config.Settings.InfiniteInvasion)
+                    {
+                        Core.eventSize = 20_000_000;
+                    }
+                    Core.eventSizeStart = Core.eventSize;
                     args.Handled = true;
                     break;
                 }
@@ -183,7 +213,7 @@ namespace CustomEvent
         /// <param name="args">Data for the <see cref=ExHooks.Events.Invasion.PostEventNpcKilledEventArgs"/></param>
         internal static void MyHook_OnPostEventNPCKilled(object? obj, ExHooks.Events.Invasion.PostEventNpcKilledEventArgs args)
         {
-            //Since events created this way may share duplicate enemies between custom events so we are gonna rely on the currently active event.
+            //Since events created this way may share duplicate npc between custom events so we are gonna rely on the currently active event.
             foreach (var evins in Core.eventInstances!)
             {
                 if (evins.EventID == Core.eventType)
@@ -205,7 +235,13 @@ namespace CustomEvent
             }
         }
 
-        internal static void MyHook_OnModdedEventUpdate(object? sender, ExHooks.Events.Invasion.ModdedEventUpdateEventArgs args)
+        /// <summary>
+        /// Called on every game ticks to update the current on-going event.
+        /// Provides support for updating custom event as well.
+        /// </summary>
+        /// <param name="obj">The object that triggered the event.</param>
+        /// <param name="args">Data for the <see cref=ExHooks.Events.Invasion.PostEventUpdateEventArgs"/></param>
+        internal static void MyHook_OnPostEventUpdate(object? obj, ExHooks.Events.Invasion.PostEventUpdateEventArgs args)
         {
             if (Core.eventType > 0)
             {
@@ -273,9 +309,9 @@ namespace CustomEvent
         /// <param name="args">Data for the <see cref=ExHooks.Events.World.CheckDaytimeEventRequirementsEventArgs"/>.</param>
         internal static void MyHook_OnCheckDaytimeEventRequirements(object? sender, ExHooks.Events.World.CheckDaytimeEventRequirementsEventArgs args)
         {
-            foreach (var evins in Core.eventInstances!)
+            foreach (var devent in Core.eventInstances!.OfType<IDaytimeEvent>())
             {
-                args.Handled = evins.CheckRequirementsForDaytimeEvent();
+                args.Handled = devent.CheckRequirementsForDaytimeEvent();
             }
         }
 
@@ -287,9 +323,9 @@ namespace CustomEvent
         /// <param name="args">Data for the <see cref=ExHooks.Events.World.CheckNighttimeEventRequirementsEventArgs"/>.</param>
         internal static void MyHook_OnCheckNighttimeEventRequirements(object? sender, ExHooks.Events.World.CheckNighttimeEventRequirementsEventArgs args)
         {
-            foreach (var evins in Core.eventInstances!)
+            foreach (var nevent in Core.eventInstances!.OfType<INighttimeEvent>())
             {
-                args.Handled = evins.CheckRequirementsForNighttimeEvent();
+                args.Handled = nevent.CheckRequirementsForNighttimeEvent();
             }
         }
     }

@@ -15,6 +15,12 @@ namespace CustomEvent
         string Name { get; }
 
         /// <summary>
+        /// The shorter version of the event name.<br/>
+        /// These aliases can be used as an alternative way to summon custom event directly via TShock's /worldevent command.
+        /// </summary>
+        string[] Alias { get; }
+
+        /// <summary>
         /// The id of the event.
         /// Avoid assigning the same ID as the vanilla invasion type or any other custom event.
         /// </summary>
@@ -64,20 +70,6 @@ namespace CustomEvent
         void ConfigureEvent(int eventId);
 
         /// <summary>
-        /// A method that is triggered each time a new day started (at 4:30 am).
-        /// Used to check if the custom event's conditions are met.
-        /// </summary>
-        /// <returns>True if the event conditions are met. Otherwise, false.</returns>
-        bool CheckRequirementsForDaytimeEvent();
-
-        /// <summary>
-        /// A method that is triggered each time a new night started (at 7:30 pm).
-        /// Used to check if the custom event's conditions are met.
-        /// </summary>
-        /// <returns>True if the event conditions are met. Otherwise, false.</returns>
-        bool CheckRequirementsForNighttimeEvent();
-
-        /// <summary>
         /// A method that is triggered each time an npc is about to spawn.
         /// Used to replace placeholder npc with the event's designed npc.
         /// </summary>
@@ -89,5 +81,25 @@ namespace CustomEvent
         /// Has various uses depending on what you want to do.
         /// </summary>
         void OnEventCompletion();
+    }
+
+    public interface IDaytimeEvent : ICEvent
+    {
+        /// <summary>
+        /// A method that is triggered each time a new day started (at 4:30 am).
+        /// Used to check if the custom event's conditions are met.
+        /// </summary>
+        /// <returns>True if the event conditions are met. Otherwise, false.</returns>
+        bool CheckRequirementsForDaytimeEvent();
+    }
+
+    public interface INighttimeEvent : ICEvent
+    {
+        /// <summary>
+        /// A method that is triggered each time a new night started (at 7:30 pm).
+        /// Used to check if the custom event's conditions are met.
+        /// </summary>
+        /// <returns>True if the event conditions are met. Otherwise, false.</returns>
+        bool CheckRequirementsForNighttimeEvent();
     }
 }

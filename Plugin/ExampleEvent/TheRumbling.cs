@@ -1,13 +1,15 @@
 ﻿using Terraria;
 using Terraria.ID;
 using Terraria.Localization;
+using TShockAPI;
 using Microsoft.Xna.Framework;
 
 namespace CustomEvent.ExampleEvent
 {
-    public class TheRumbling : ICEvent
+    public class TheRumbling : IDaytimeEvent
     {
         public string Name => "The Rumbling";
+        public string[] Alias => new string[] { "rumbling", "aot" };
         //To you, 2000 years from now...
         public int EventID => 2000;
         public KeyValuePair<LocalizedText, Color> WestIncomingMsg 
@@ -17,7 +19,7 @@ namespace CustomEvent.ExampleEvent
         public KeyValuePair<LocalizedText, Color> ArrivedMsg 
             => new KeyValuePair<LocalizedText, Color>(new LocalizedText("The Titan has reached the base!", "Rumbling.Center"), new Color(183, 55, 27));
         public KeyValuePair<LocalizedText, Color> DefeatedMsg 
-            => new KeyValuePair<LocalizedText, Color>(new LocalizedText("The Rumbling has stopped!", "Rumbling.Stopped"), new Color(135, 138, 143));
+            => new KeyValuePair<LocalizedText, Color>(new LocalizedText("The Rumbling has been stopped!", "Rumbling.Defeated"), new Color(135, 138, 143));
         public Dictionary<int, int> EnemyPool => new Dictionary<int, int>
         {
             { NPCID.DD2OgreT3, 3 }
@@ -36,7 +38,7 @@ namespace CustomEvent.ExampleEvent
             if (num > 0)
             {
                 Core.eventType = eventId;
-                Core.eventSize = 10 + 5 * num;
+                Core.eventSize = 10 + (5 * TShock.Config.Settings.InvasionMultiplier * num);
                 Core.eventWarn = 0;
             }
             Core.eventX = (double)Main.maxTilesX;
@@ -52,12 +54,14 @@ namespace CustomEvent.ExampleEvent
             return false;
         }
 
-        public bool CheckRequirementsForNighttimeEvent() => false;
-
         public bool SpawnEventNPC(Player player, int tileX, int tileY)
         {
-            NPC.NewNPC(NPC.GetSpawnSourceForNaturalSpawn(), tileX * 16 + 8, tileY * 16, NPCID.DD2OgreT3);
-            return NPC.CountNPCS(NPCID.DD2OgreT3) < Core.eventSize;
+            if (NPC.CountNPCS(NPCID.DD2OgreT3) < 7)
+            {
+                NPC.NewNPC(NPC.GetSpawnSourceForNaturalSpawn(), tileX * 16 + 8, tileY * 16, NPCID.DD2OgreT3);
+                return true;
+            }
+            return false;
         }
 
         public void OnEventCompletion() { }
