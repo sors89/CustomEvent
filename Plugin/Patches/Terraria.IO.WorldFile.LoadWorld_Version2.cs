@@ -16,10 +16,10 @@ namespace CustomEvent.Patches
             {
                 if (reader.BaseStream.Length >= reader.BaseStream.Position + 20)
                 {
-                    Core.eventSize = reader.ReadInt32();
-                    Core.eventType = reader.ReadInt32();
-                    Core.eventX = reader.ReadDouble();
-                    Core.eventSizeStart = reader.ReadInt32();
+                    CustomEvent.Modules.InvasionCore.eventSize = reader.ReadInt32();
+                    CustomEvent.Core.eventType = reader.ReadInt32();
+                    CustomEvent.Modules.InvasionCore.eventX = reader.ReadDouble();
+                    CustomEvent.Modules.InvasionCore.eventSizeStart = reader.ReadInt32();
                 }
                 return 0;
             });

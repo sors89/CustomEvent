@@ -30,16 +30,16 @@ namespace CustomEvent.Patches
 
         internal static void MMHook_Invade(Action<TShockAPI.CommandArgs> orig, TShockAPI.CommandArgs args)
         {
-            if (Core.eventSize <= 0)
+            if (CustomEvent.Modules.InvasionCore.eventSize <= 0)
             {
                 if (args.Parameters.Count == 2)
                 {
                     string evName = args.Parameters[1].ToLowerInvariant();
-                    foreach (var evins in Core.eventInstances!)
+                    foreach (var evins in Core.eventInstances)
                     {
                         if (evins.Alias.Contains(evName))
                         {
-                            TShockAPI.TSPlayer.All.SendInfoMessage("{0} has started {1}!", args.Player.Name, evins.Name);
+                            TShockAPI.TSPlayer.All.SendInfoMessage("{0} has started {1}!", args.Player.Name, evins.EventName);
                             Terraria.Main.StartInvasion(evins.EventID);
                             return;
                         }
@@ -49,7 +49,7 @@ namespace CustomEvent.Patches
             else
             {
                 TShockAPI.TSPlayer.All.SendInfoMessage("{0} has ended the current invasion event.", args.Player.Name);
-                Core.eventSize = 0;
+                CustomEvent.Modules.InvasionCore.eventSize = 0;
                 return;
             }
             orig(args);

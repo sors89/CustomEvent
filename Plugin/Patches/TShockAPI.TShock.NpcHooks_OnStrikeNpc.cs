@@ -13,18 +13,18 @@ namespace CustomEvent.Patches
 
             //Adds logic to check whether Main.invasionType > 0 to avoid accidentally setting the vanilla invasion size to 20_000_000.
             var dumbLabel = csr.Previous.Operand;
-            csr.Emit(OpCodes.Ldsfld, typeof(Terraria.Main).GetField("invasionType"));
+            csr.Emit(OpCodes.Ldsfld, CachedFields.invasionType);
             csr.Emit(OpCodes.Ldc_I4_0);
             csr.Emit(OpCodes.Ble_S, dumbLabel);
 
             while (csr.TryGotoNext(i => i.MatchNop())) ;
 
             var targetNopLabel = csr.Next;
-            csr.Emit(OpCodes.Ldsfld, typeof(CustomEvent.Core).GetField("eventSize"));
+            csr.Emit(OpCodes.Ldsfld, CachedFields.eventSize);
             csr.Emit(OpCodes.Ldc_I4, 10);
             csr.Emit(OpCodes.Nop);
             csr.Emit(OpCodes.Ldc_I4, 20_000_000);
-            csr.Emit(OpCodes.Stsfld, typeof(CustomEvent.Core).GetField("eventSize"));
+            csr.Emit(OpCodes.Stsfld, CachedFields.eventSize);
 
             var wrongTargetLabels = csr.Body.Instructions
                                 .Where(i => i.Operand is ILLabel ilLabel && ilLabel.Target == targetNopLabel)

@@ -13,10 +13,10 @@ namespace CustomEvent.Patches
             csr.Emit(OpCodes.Ldarg_0);
             csr.EmitDelegate<Func<BinaryWriter, int>>(writer =>
             {
-                writer.Write(Core.eventSize);
-                writer.Write(Core.eventType);
-                writer.Write(Core.eventX);
-                writer.Write(Core.eventSizeStart);
+                writer.Write(CustomEvent.Modules.InvasionCore.eventSize);
+                writer.Write(CustomEvent.Core.eventType);
+                writer.Write(CustomEvent.Modules.InvasionCore.eventX);
+                writer.Write(CustomEvent.Modules.InvasionCore.eventSizeStart);
                 return (int)writer.BaseStream.Position;
             });
             csr.Emit(OpCodes.Pop);
